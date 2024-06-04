@@ -1,0 +1,21 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: python-fastapi-deployment
+spec:
+  template:
+    metadata:
+      name: python-fastapi
+      labels:
+        app: python-fastapi-server
+        type: backend
+    spec:
+      containers:
+        - name: python-fastapi-server
+          image: shabarimeda03/python-fastapi-app
+          ports:
+            - containerPort: 8000
+  replicas: 2
+  selector:
+    matchLabels:
+      app: python-fastapi-server
