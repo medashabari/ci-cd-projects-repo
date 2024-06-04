@@ -12,7 +12,7 @@ spec:
     spec:
       containers:
         - name: python-fastapi-server
-          image: shabarimeda03/python-fastapi-app
+          image: shabarimeda03/python-fastapi-app:latest
           ports:
             - containerPort: 8000
   replicas: 2
