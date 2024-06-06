@@ -1,0 +1,52 @@
+pipeline {
+        agent any
+        stages {
+            stage('Clean Workspace'){
+                steps {
+                    cleanWs()
+                }
+            }
+            stage('Code Checkout'){
+                steps{
+                   git branch: 'main', credentialsId: 'SHABARI-GIT-HUB-CREDENTIALS', url: 'https://github.com/medashabari/ci-cd-projects-repo.git'
+                }
+            }
+            stage('Build Docker image'){
+                environment {
+                    DOCKER_IMAGE = "shabarimeda03/python-fastapi-app:v${BUILD_NUMBER}"
+                    REGISTRY_CREDENTIALS = credentials('SHABARI-DOCKER-CRED')
+                }
+                steps{
+                    script {
+                    sh 'cd python-fastapi-app && docker build -t ${DOCKER_IMAGE} .'
+                    def dockerImage = docker.image("${DOCKER_IMAGE}")
+                    docker.withRegistry('https://index.docker.io/v1/', "SHABARI-DOCKER-CRED") {
+                    dockerImage.push()
+                        }
+                    }
+                }
+            }
+            stage('Update Deployment manifest'){
+                environment {
+                    GIT_USER_NAME = "medashabari"
+                    GIT_REPO_NAME = "ci-cd-projects-repo"
+                }
+                steps {
+                    withCredentials([string(credentialsId: 'SHABARI_GITHUB_TOKEN', variable: 'GITHUB_TOKEN')]) {
+                    script {
+                    sh '''
+                    git config user.email "medashabari@gmail.com"
+                    git config user.name "medashabari"
+                    BUILD_NUMBER=${BUILD_NUMBER}
+                    sed -i "s/python-fastapi-app:\\([^/]*\\)/python-fastapi-app:v${BUILD_NUMBER}/g" python-fastapi-app/Deploy/k8s-manifests/python-deploy.yaml
+                    cat python-fastapi-app/Deploy/k8s-manifests/python-deploy.yaml
+                    git add python-fastapi-app/Deploy/k8s-manifests/python-deploy.yaml
+                    git commit -m "Update deployment image to version ${BUILD_NUMBER}"
+                    git push https://${GITHUB_TOKEN}@github.com/${GIT_USER_NAME}/${GIT_REPO_NAME} HEAD:main
+                    '''
+                    }
+                    }
+                }
+            }
+        }
+    }
